@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+import sys
+import getopt
+import os
+import string
+
+args = sys.argv[1:]
+options = getopt.getopt(args, "o:l:L:W:")
+
+target = filter(lambda o: o[0] == '-o', options[0])[0][1]
+ld_inputs = filter(lambda o: not (o.startswith('-W')), options[1])
+
+ld_inputs += map(lambda x: x[0] + x[1], filter(lambda o: o[0] in ['-L', '-l'], options[0]))
+
+VANDROID_SRC_DIR = sys.argv[0][0:string.find(sys.argv[0], "/build/link-wrapper")]
+
+#COMMON_LIBS = "-ll4re-vfs.o -l4re-util -lc_be_l4refile -lc_be_l4re -lsupc++ -luc_c -l4re -ll4util -ll4sys -l4re-c -l4re-c-util"
+COMMON_LIBS = "-l4re-util -luc_c -l4re -ll4util -ll4sys -l4re-c -l4re-c-util"
+
+link_cmd = """{ld} -m elf_i386 -o {target} \
+{l4re_l4_build_dir}/lib/x86_pentium/crti.o \
+{cross_compiler_lib}/crtbeginT.o \
+{l4re_l4_build_dir}/lib/x86_pentium/crt1.o --start-group {inputs} --end-group \
+-Bstatic --defsym=__executable_start=0x01000000 --hash-style=sysv \
+--defsym __L4_KIP_ADDR__=0xaffff000 --defsym __L4_STACK_ADDR__=0xb0000000 \
+-L{l4re_l4_build_dir}/lib/x86_pentium/l4f \
+-L{l4re_l4_build_dir}/lib/x86_pentium \
+-L{l4re_l4_build_dir}/lib \
+-T{l4re_l4_build_dir}/lib/x86_pentium/main_stat.ld \
+--start-group -static -nostdlib \
+{cross_compiler_lib}/libgcc.a \
+{cross_compiler_lib}/libgcc_eh.a  \
+{common_libs} --end-group \
+--warn-common \
+--defsym=__executable_start=0x01000000 -gc-sections \
+{cross_compiler_lib}/crtend.o \
+{l4re_l4_build_dir}/lib/x86_pentium/crtn.o
+""".format(ld = os.environ["CROSS_COMPILE"] + "ld",
+           inputs = ' '.join(ld_inputs),
+           target = target,
+           common_libs = COMMON_LIBS,
+           l4re_l4_build_dir=os.environ["L4RE_L4_BUILD_DIR"],
+           cross_compiler_lib=os.environ["LIBGCC_DIR"])
+
+os.system(link_cmd)

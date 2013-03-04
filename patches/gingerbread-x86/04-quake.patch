@@ -1,0 +1,14 @@
+diff --git a/quake/src/WinQuake/sv_main.cpp b/quake/src/WinQuake/sv_main.cpp
+index f9eb24e..3b51f65 100644
+--- a/external/quake/quake/src/WinQuake/sv_main.cpp
++++ b/external/quake/quake/src/WinQuake/sv_main.cpp
+@@ -262,6 +262,9 @@ void SV_ConnectClient (int clientnum)
+ 	
+ 	if (sv.loadgame)
+ 		memcpy (spawn_parms, client->spawn_parms, sizeof(spawn_parms));
++	else
++		memset (spawn_parms, 0, sizeof(spawn_parms));
++
+ 	memset (client, 0, sizeof(*client));
+ 	client->netconnection = netconnection;
+ 

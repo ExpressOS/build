@@ -1,0 +1,58 @@
+diff --git a/core/java/android/os/MessageQueue.java b/core/java/android/os/MessageQueue.java
+index 0090177..d942298 100644
+--- a/frameworks/base/core/java/android/os/MessageQueue.java
++++ b/frameworks/base/core/java/android/os/MessageQueue.java
+@@ -113,7 +113,9 @@ public class MessageQueue {
+         int nextPollTimeoutMillis = 0;
+ 
+         for (;;) {
+-            if (nextPollTimeoutMillis != 0) {
++            // HH: flushing commands seems confusing ExpressOS
++            // disable it for now
++            if (false && nextPollTimeoutMillis != 0) {
+                 Binder.flushPendingCommands();
+             }
+             nativePollOnce(mPtr, nextPollTimeoutMillis);
+diff --git a/core/java/android/webkit/FrameLoader.java b/core/java/android/webkit/FrameLoader.java
+index ec7c032..919c31d 100644
+--- a/frameworks/base/core/java/android/webkit/FrameLoader.java
++++ b/frameworks/base/core/java/android/webkit/FrameLoader.java
+@@ -96,7 +96,8 @@ class FrameLoader {
+         String url = mListener.url();
+ 
+         if (URLUtil.isNetworkUrl(url)){
+-            if (mSettings.getBlockNetworkLoads()) {
++            // HH: Disable checks for ExpressOS
++            if (false && mSettings.getBlockNetworkLoads()) {
+                 mListener.error(EventHandler.ERROR_BAD_URL,
+                         mListener.getContext().getString(
+                                 com.android.internal.R.string.httpErrorBadUrl));
+diff --git a/include/utils/Looper.h b/include/utils/Looper.h
+index eefff31..e33fa97 100644
+--- a/frameworks/base/include/utils/Looper.h
++++ b/frameworks/base/include/utils/Looper.h
+@@ -25,7 +25,8 @@
+ #include <android/looper.h>
+ 
+ // When defined, uses epoll_wait() for polling, otherwise uses poll().
+-#define LOOPER_USES_EPOLL
++// HH: Disable it for ExpressOS.
++// #define LOOPER_USES_EPOLL
+ 
+ // When defined, logs performance statistics for tuning and debugging purposes.
+ //#define LOOPER_STATISTICS
+diff --git a/libs/surfaceflinger_client/ISurfaceComposerClient.cpp b/libs/surfaceflinger_client/ISurfaceComposerClient.cpp
+index 2cc1f8e..66bd17e 100644
+--- a/frameworks/base/libs/surfaceflinger_client/ISurfaceComposerClient.cpp
++++ b/frameworks/base/libs/surfaceflinger_client/ISurfaceComposerClient.cpp
+@@ -157,6 +157,8 @@ status_t BnSurfaceComposerClient::onTransact(
+      const int pid = ipc->getCallingPid();
+      const int uid = ipc->getCallingUid();
+      const int self_pid = getpid();
+-     if (UNLIKELY(pid != self_pid && uid != AID_GRAPHICS)) {
++
++     // HH: Disable checks for ExpressOS
++     if (false && UNLIKELY(pid != self_pid && uid != AID_GRAPHICS)) {
+          // we're called from a different process, do the real check
+          if (!checkCallingPermission(
+                  String16("android.permission.ACCESS_SURFACE_FLINGER")))

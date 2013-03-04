@@ -1,0 +1,200 @@
+--- a/frameworks/base/services/java/com/android/server/am/ActivityManagerService.java
++++ b/frameworks/base/services/java/com/android/server/am/ActivityManagerService.java
+@@ -3434,6 +3434,8 @@ public final class ActivityManagerService extends ActivityManagerNative
+         // the pid if we are running in multiple processes, or just pull the
+         // next app record if we are emulating process with anonymous threads.
+         ProcessRecord app;
++        ExpressOSGlue.AppInfo expressOSAppInfo = null;
++
+         if (pid != MY_PID && pid >= 0) {
+             synchronized (mPidsSelfLocked) {
+                 app = mPidsSelfLocked.get(pid);
+@@ -3445,6 +3447,18 @@ public final class ActivityManagerService extends ActivityManagerNative
+             app = null;
+         }
+ 
++        if (app == null && ExpressOSGlue.isExpressOSProcess(pid)) {
++            Slog.w(TAG, "Creating ExpressOS app for pid " + pid);
++            expressOSAppInfo = ExpressOSGlue.loadApplicationInfo(pid);
++            Slog.w(TAG, "Creating ExpressOS app for p2id " + pid);
++            if (expressOSAppInfo != null) {
++                app = newProcessRecordLocked(null, expressOSAppInfo.appInfo,
++                                             expressOSAppInfo.appInfo.processName);
++                app.setPid(pid);
++                mProcessNames.put(app.processName, app.info.uid, app);
++            }
++        }
++
+         if (app == null) {
+             Slog.w(TAG, "No pending application record for pid " + pid
+                     + " (IApplicationThread " + thread + "); dropping process");
+@@ -3561,7 +3575,35 @@ public final class ActivityManagerService extends ActivityManagerNative
+         boolean didSomething = false;
+ 
+         // See if the top visible activity is waiting to run in this process...
+-        ActivityRecord hr = mMainStack.topRunningActivityLocked(null);
++        ActivityRecord hr;
++        if (expressOSAppInfo != null) {
++            Intent intent = new Intent();
++            ComponentName cn = ComponentName.unflattenFromString(expressOSAppInfo.intent);
++            intent.setComponent(cn);
++
++            ActivityInfo aInfo;
++            try {
++                ResolveInfo rInfo =
++                    AppGlobals.getPackageManager().resolveIntent(
++                        intent, intent.getType(),
++                        PackageManager.MATCH_DEFAULT_ONLY
++                        | ActivityManagerService.STOCK_PM_FLAGS);
++                aInfo = rInfo != null ? rInfo.activityInfo : null;
++            } catch (RemoteException e) {
++                aInfo = null;
++            }
++
++            hr = new ActivityRecord(this, mMainStack, app, app.info.uid, intent, intent.getType(), aInfo, this.mConfiguration, null, null, 0, false);
++            hr.task = new TaskRecord(mCurTask, hr.info, intent,
++                                     (hr.info.flags&ActivityInfo.FLAG_CLEAR_TASK_ON_LAUNCH) != 0);
++
++            addRecentTaskLocked(hr.task);
++            mMainStack.startActivityLocked(hr, true, true);
++            Slog.w(TAG, "Running mock app, hr=" + hr);
++        } else {
++            hr = mMainStack.topRunningActivityLocked(null);
++        }
++
+         if (hr != null && normalMode) {
+             if (hr.app == null && app.info.uid == hr.info.applicationInfo.uid
+                     && processName.equals(hr.processName)) {
+diff --git a/services/java/com/android/server/am/ActivityStack.java b/services/java/com/android/server/am/ActivityStack.java
+index f52d322..2e862bb 100644
+--- a/frameworks/base/services/java/com/android/server/am/ActivityStack.java
++++ b/frameworks/base/services/java/com/android/server/am/ActivityStack.java
+@@ -1346,7 +1346,7 @@ public class ActivityStack {
+         return true;
+     }
+ 
+-    private final void startActivityLocked(ActivityRecord r, boolean newTask,
++    final void startActivityLocked(ActivityRecord r, boolean newTask,
+             boolean doResume) {
+         final int NH = mHistory.size();
+ 
+--- /dev/null
++++ b/frameworks/base/services/java/com/android/server/am/ExpressOSGlue.java
+@@ -0,0 +1,117 @@
++/*
++ * Copyright (c) 2012-2013 University of Illinois at
++ * Urbana-Champaign. All rights reserved.
++ *
++ * Developed by:
++ *
++ *     Haohui Mai
++ *     University of Illinois at Urbana-Champaign
++ *     http://haohui.me
++ *
++ * Permission is hereby granted, free of charge, to any person
++ * obtaining a copy of this software and associated documentation
++ * files (the "Software"), to deal with the Software without
++ * restriction, including without limitation the rights to use, copy,
++ * modify, merge, publish, distribute, sublicense, and/or sell copies
++ * of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimers.
++ *
++ *    * Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimers in the documentation and/or other materials
++ *      provided with the distribution.
++ *
++ *    * Neither the names of University of Illinois at
++ *      Urbana-Champaign, nor the names of its contributors may be
++ *      used to endorse or promote products derived from this Software
++ *      without specific prior written permission.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
++ * NONINFRINGEMENT. IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT
++ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++ * DEALINGS WITH THE SOFTWARE.
++ */
++
++package com.android.server.am;
++
++import android.content.pm.ApplicationInfo;
++import android.os.Parcel;
++import android.util.Slog;
++
++import java.io.BufferedInputStream;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.IOException;
++
++final class ExpressOSGlue {
++
++    static class AppInfo {
++        ApplicationInfo appInfo;
++        String intent;    
++    }
++        
++    static final String TAG = "ExpressOSGlue";
++    private static final int MAX_APP_INFO_LEN = 4096;
++    private static final String getAppInfoFileName(int pid)
++    {
++        return "/data/expressos/app_info-" + pid;
++    }
++
++    static final boolean isExpressOSProcess(int pid)
++    {
++        return new File(getAppInfoFileName(pid)).isFile();
++    }
++            
++    static final AppInfo loadApplicationInfo(int pid)
++    {
++        String file = getAppInfoFileName(pid);
++        BufferedInputStream is;
++        try {
++            is = new BufferedInputStream(new FileInputStream(file));
++        } catch (FileNotFoundException e) {
++            e.printStackTrace();
++            return null;
++        }
++
++        int size = 0;
++        byte[] buf = new byte[MAX_APP_INFO_LEN];
++
++        try {
++            size = is.read(buf);
++        } catch (IOException e) {
++            e.printStackTrace();
++            return null;
++        }
++
++        Parcel p = Parcel.obtain();
++        p.unmarshall(buf, 0, size);
++        p.setDataPosition(0);
++        
++        ApplicationInfo i = new ApplicationInfo();
++        i.packageName = p.readString();
++        i.taskAffinity = p.readString();
++        i.processName = p.readString();
++        i.uid = p.readInt();
++        i.flags = p.readInt();
++        i.sourceDir = p.readString();
++        i.publicSourceDir = p.readString();
++        i.dataDir = p.readString();
++        i.enabled = p.readInt() != 0;
++        i.targetSdkVersion = p.readInt();
++
++        AppInfo ret = new AppInfo();
++        ret.appInfo = i;
++        ret.intent = p.readString();
++        p.recycle();
++
++        return ret;
++    }
++}

@@ -1,0 +1,9 @@
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index 20603ba..3757589 100644
+--- a/device/asus/eeepc/BoardConfig.mk
++++ b/device/asus/eeepc/BoardConfig.mk
+@@ -1,3 +1,4 @@
++TARGET_ARCH_VARIANT := x86-atom
+ TARGET_HAS_THIRD_PARTY_APPS := true
+ BOARD_GPU_DRIVERS := i915 r600g
+ 

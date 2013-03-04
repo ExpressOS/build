@@ -1,0 +1,27 @@
+include build/definition.mk
+
+L4ANDROID_SOURCE_DIR := $(EXPRESSOS_SRC_DIR)/third_party/l4android
+
+TARGET := $(L4ANDROID_BUILD_DIR)/vmlinuz.android
+
+VANDROID_LIBKERN_INC_DIR := $(EXPRESSOS_SRC_DIR)/kernel/expressos/native/include
+export VANDROID_LIBKERN_INC_DIR
+
+all: $(TARGET)
+
+$(TARGET): $(L4ANDROID_BUILD_DIR) FORCE
+	$(Q)$(MAKE) -C $(L4ANDROID_SOURCE_DIR) O=$(L4ANDROID_BUILD_DIR) L4ARCH=$(L4ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
+
+$(L4ANDROID_BUILD_DIR):
+	$(Q)$(MKDIR) -p $@
+	$(Q)$(SED) -e '/^CONFIG_L4_OBJ_TREE/cCONFIG_L4_OBJ_TREE="$(L4RE_L4_BUILD_DIR)"' \
+		$(EXPRESSOS_TARGET_CONFIG_DIR)/l4android-config > $@/.config
+	$(Q)$(MAKE) -C $(L4ANDROID_SOURCE_DIR) O=$(L4ANDROID_BUILD_DIR) L4ARCH=$(L4ARCH) oldconfig
+
+clean:
+	$(Q)$(MAKE) -C $(L4ANDROID_BUILD_DIR) clean
+
+mrproper:
+	$(Q)$(RM) -rf $(L4ANDROID_BUILD_DIR)
+
+.PHONY: all clean mrproper FORCE

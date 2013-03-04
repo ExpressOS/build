@@ -1,0 +1,7 @@
+*~
+.*
+*#
+*.pyc
+scripts/parser.out
+scripts/parsetab.py
+autom4te.cache/

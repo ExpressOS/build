@@ -1,0 +1,38 @@
+diff --git a/libc/arch-x86/bionic/__set_tls.c b/libc/arch-x86/bionic/__set_tls.c
+index 48b55f0..e6ccce0 100755
+--- a/bionic/libc/arch-x86/bionic/__set_tls.c
++++ b/bionic/libc/arch-x86/bionic/__set_tls.c
+@@ -70,13 +70,15 @@ struct _thread_area_head {
+ int __set_tls(void *ptr)
+ {
+     int   rc, segment;
++    struct user_desc desc = _tls_desc;
+ 
+-    _tls_desc.base_addr = (unsigned long)ptr;
++    int old_entry_num = desc.entry_number;
++    desc.base_addr = (unsigned long)ptr;
+ 
+     /* We also need to write the location of the tls to ptr[0] */
+     ((struct _thread_area_head *)ptr)->self = ptr;
+ 
+-    rc = __set_thread_area( &_tls_desc );
++    rc = __set_thread_area( &desc );
+     if (rc != 0)
+     {
+         /* could not set thread local area */
+@@ -84,10 +86,14 @@ int __set_tls(void *ptr)
+     }
+ 
+     /* this weird computation comes from GLibc */
+-    segment = _tls_desc.entry_number*8 + 3;
++    segment = desc.entry_number*8 + 3;
+     asm __volatile__ (
+         "   movw %w0, %%gs" :: "q"(segment)
+     );
++
++    if (old_entry_num == -1)
++        _tls_desc = desc;
++
+     return 0;
+ }
+ 

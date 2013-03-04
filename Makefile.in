@@ -1,0 +1,8 @@
+EXPRESSOS_SRC_DIR := @abs_srcdir@
+EXPRESSOS_BUILD_DIR := @abs_builddir@
+
+LLVM_BIN_DIR := @llvm_bin_dir@
+
+EXPRESSOS_TARGET := @target@
+
+include $(EXPRESSOS_SRC_DIR)/build/main.mk

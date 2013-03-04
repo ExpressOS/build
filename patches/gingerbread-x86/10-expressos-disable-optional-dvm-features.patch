@@ -1,0 +1,61 @@
+diff --git a/vm/Dvm.mk b/vm/Dvm.mk
+index 0867ffa..2ae76f1 100644
+--- a/dalvik/vm/Dvm.mk
++++ b/dalvik/vm/Dvm.mk
+@@ -24,7 +24,7 @@
+ #
+ # Compiler defines.
+ #
+-LOCAL_CFLAGS += -fstrict-aliasing -Wstrict-aliasing=2 -fno-align-jumps
++LOCAL_CFLAGS += -fno-strict-aliasing -Wstrict-aliasing=2 -fno-align-jumps
+ #LOCAL_CFLAGS += -DUSE_INDIRECT_REF
+ LOCAL_CFLAGS += -Wall -Wextra -Wno-unused-parameter
+ LOCAL_CFLAGS += -DARCH_VARIANT=\"$(dvm_arch_variant)\"
+diff --git a/vm/Init.c b/vm/Init.c
+index 0a55f6b..220fdeb 100644
+--- a/dalvik/vm/Init.c
++++ b/dalvik/vm/Init.c
+@@ -1343,12 +1343,14 @@ int dvmStartup(int argc, const char* const argv[], bool ignoreUnrecognized,
+     }
+ 
+ 
++#if 0
+ #ifndef NDEBUG
+     if (!dvmTestHash())
+         LOGE("dmvTestHash FAILED\n");
+     if (false /*noisy!*/ && !dvmTestIndirectRefTable())
+         LOGE("dvmTestIndirectRefTable FAILED\n");
+ #endif
++#endif
+ 
+     assert(!dvmCheckException(dvmThreadSelf()));
+     gDvm.initExceptionCount = 0;
+@@ -1426,6 +1428,7 @@ bool dvmInitAfterZygote(void)
+     endHeap = dvmGetRelativeTimeUsec();
+     startQuit = dvmGetRelativeTimeUsec();
+ 
++#if 0
+     /* start signal catcher thread that dumps stacks on SIGQUIT */
+     if (!gDvm.reduceSignals && !gDvm.noQuitHandler) {
+         if (!dvmSignalCatcherStartup())
+@@ -1437,10 +1440,12 @@ bool dvmInitAfterZygote(void)
+         if (!dvmStdioConverterStartup())
+             return false;
+     }
++#endif
+ 
+     endQuit = dvmGetRelativeTimeUsec();
+     startJdwp = dvmGetRelativeTimeUsec();
+ 
++#if 0
+     /*
+      * Start JDWP thread.  If the command-line debugger flags specified
+      * "suspend=y", this will pause the VM.  We probably want this to
+@@ -1449,6 +1454,7 @@ bool dvmInitAfterZygote(void)
+     if (!dvmInitJDWP()) {
+         LOGD("JDWP init failed; continuing anyway\n");
+     }
++#endif
+ 
+     endJdwp = dvmGetRelativeTimeUsec();
+ 

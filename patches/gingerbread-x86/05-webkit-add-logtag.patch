@@ -1,0 +1,26 @@
+diff --git a/WebCore/platform/android/WidgetAndroid.cpp b/WebCore/platform/android/WidgetAndroid.cpp
+index 9ab0b2c..fa0a302 100644
+--- a/external/webkit/WebCore/platform/android/WidgetAndroid.cpp
++++ b/external/webkit/WebCore/platform/android/WidgetAndroid.cpp
+@@ -23,6 +23,8 @@
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#define LOG_TAG "WebCore"
++
+ #include "config.h"
+ #include "Widget.h"
+ 
+diff --git a/WebCore/platform/network/android/ResourceHandleAndroid.cpp b/WebCore/platform/network/android/ResourceHandleAndroid.cpp
+index aadf43b..ac7f7aa 100644
+--- a/external/webkit/WebCore/platform/network/android/ResourceHandleAndroid.cpp
++++ b/external/webkit/WebCore/platform/network/android/ResourceHandleAndroid.cpp
+@@ -23,6 +23,8 @@
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#define LOG_TAG "WebCore"
++
+ #include "config.h"
+ 
+ #include "ResourceHandle.h"

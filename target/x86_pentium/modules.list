@@ -1,0 +1,35 @@
+modaddr 0x01100000
+
+entry expressos
+roottask moe rom/expressos.cfg
+kernel fiasco -serial_esc
+module l4re
+module ned
+module io
+module rtc
+module mag
+module fb-drv
+module expressos
+module vmlinuz.android
+module expressos.cfg
+module x86-legacy.devs
+module l4_android-x86.vbus
+module ramdisk-expressos.rd
+module system-expressos.img
+
+entry expressos-presenter
+roottask moe rom/expressos-presenter.cfg
+kernel fiasco -serial_esc
+module l4re
+module ned
+module io
+module rtc
+module mag
+module fb-drv
+module expressos
+module vmlinuz.android
+module expressos-presenter.cfg
+module x86-legacy.devs
+module l4_android-x86.vbus
+module ramdisk-presenter.rd
+module system-presenter.img
